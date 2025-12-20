@@ -1,0 +1,132 @@
+go atlas simflag="-P 8"
+
+####### VARIABLES ############################################################
+#_wf_$"wf"_lch_$"Lch"_R_$"R"_tox_$"tox"_temp_$"temp"
+#Work Function
+set wf=4.85
+
+#Channel_Length
+set Lch=0.020
+
+#Radius
+set R=0.005
+
+#Oxide Thickness
+set tox=0.002
+
+#Temperature
+set temp=300
+
+####### MESH #################################################################
+
+MESH CYLINDRICAL THREE.D
+
+R.MESH loc=0.0  		spacing=0.02
+R.MESH loc=$R  			spacing=0.01
+R.MESH loc=$R+$tox  		spacing=0.01
+R.MESH loc=$R+$tox+0.001  	spacing=0.01
+
+A.MESH loc=0  		spacing=30
+A.MESH loc=360  	spacing=30
+
+Z.MESH loc=0  		spacing=0.25
+Z.MESH loc=0.015  	spacing=0.02
+Z.MESH loc=0.040  	spacing=0.02
+Z.MESH loc=$Lch+0.040  	spacing=0.02
+Z.MESH loc=$Lch+0.065  	spacing=0.02
+Z.MESH loc=$Lch+0.080  	spacing=0.25
+
+####### REGIONS ##############################################################
+
+region num=1 material=silicon z.min=0 z.max=$Lch+0.080 r.min=0 r.max=$R a.min=0 a.max=360
+region num=2 material=air   z.min=0 z.max=$Lch+0.080 r.min=$R r.max=$R+$tox+0.001 a.min=0 a.max=360
+region num=3 material=hfo2   z.min=0.040 z.max=$Lch+0.040 r.min=$R r.max=$R+$tox a.min=0 a.max=360
+
+####### ELECTRODES ###########################################################
+
+electrode name= drain z.min=0 z.max=0.015 r.min=$R r.max=$R+0.002 a.min=0 a.max=360
+electrode name= source z.min=$Lch+0.065 z.max=$Lch+0.080 r.min=$R r.max=$R+0.002 a.min=0 a.max=360
+electrode name= gate z.min=0.040 z.max=$Lch+0.040 r.min=$R+$tox r.max=$R+$tox+0.001 a.min=0 a.max=360
+
+####### DOPING ###############################################################
+
+doping       uniform n.type conc=1e19	  reg=1
+
+
+####### CONTACT ###############################################################
+contact name=gate workfunction=$wf
+#contact name=drain
+#contact name=source
+
+save outf=sgo_gaa.str
+
+####### MODEL ###############################################################
+MODEL FLDMOB CVT SRH AUGER FERMI BGN temperature=$temp
+output e.field j.electron j.hole j.conduc j.total ex.field ey.field e.mobility h.mobility qsse.temp h.temp qfn qfp con.band val.band j.disp
+
+####### METHOD ###############################################################
+
+METHOD NEWTON
+
+#solve init
+#solve vsource=0 
+#solve name=Drain vDrain=0 vstep=0.05 vfinal=0.5
+#log outf=sgo_gaa.log master
+#solve name=gate vgate=0 vstep=0.05 vfinal=2
+#output e.field j.electron j.hole j.conduc j.total ex.field ey.field e.mobility h.mobility qsse.temp h.temp qfn qfp con.band val.band j.disp
+#save outf=sgo_gaa_Vd_05_Vg_2.str master
+#log off
+
+# AC Analysis
+
+solve init
+solve name=Drain vDrain=0 vstep=0.05 vfinal=0.5
+log outf=gaa_nwire_wf_$"wf"_Lch_$"Lch"_R_$"R"_tox_$"tox"_temp_$"temp".log master
+solve name=gate vgate=0 vstep=0.05 vfinal=1 AC FREQ=1.0e6
+save outf=gaa_nwire_wf_$"wf"_Lch_$"Lch"_R_$"R"_tox_$"tox"_temp_$"temp".str master
+
+log off
+
+#DIBL Calculation
+
+solve init
+solve vdrain=0
+solve vdrain=0.01
+solve vdrain=0.02
+solve vdrain=0.03
+solve vdrain=0.04
+solve vdrain=0.05
+log outf=sgo_gaa_Vd_005.log
+solve name=gate vgate=0 vstep=0.1 vfinal=1
+#extract init infile="sgo_gaa_Vd_005.log"
+extract name="vt1" x.val from curve ((v."gate"), log10(abs(i."drain"))) where y.val=-7
+
+solve init
+solve prev
+solve vdrain=0
+solve vdrain=0.05
+solve vdrain=0.1
+solve vdrain=0.2
+solve vdrain=0.4
+solve vdrain=0.6
+solve vdrain=0.8
+solve vdrain=1
+log outf=sgo_gaa_Vd_1.log
+solve name=gate vgate=0 vstep=0.1 vfinal=1
+#extract init infile="sgo_gaa_Vd_1.log"
+extract name="vt2" x.val from curve ((v."gate"),log10(abs (i."drain"))) where y.val=-7
+
+
+tonyplot gaa_nwire_wf_$"wf"_Lch_$"Lch"_R_$"R"_tox_$"tox"_temp_$"temp".log
+
+go atlas
+extract name="dibl" ($"vt1"-$"vt2")/(1-0.05)
+extract init infile="gaa_nwire_wf_$"wf"_Lch_$"Lch"_R_$"R"_tox_$"tox"_temp_$"temp".log"
+extract name="subvt" 1.0/slope(maxslope(curve(v."gate",log10(abs(i."drain")))))
+extract name="Ioff_n" y.val from curve(v."gate",i."drain") where x.val=0
+extract name="Ion_n" y.val from curve(v."gate",i."drain") where x.val=1
+extract name="Ion_Ioff" $Ion_n/$Ioff_n
+extract name="vt" x.val from curve ((v."gate"),log10(abs(i."drain"))) where y.val=-6
+
+quit
+
