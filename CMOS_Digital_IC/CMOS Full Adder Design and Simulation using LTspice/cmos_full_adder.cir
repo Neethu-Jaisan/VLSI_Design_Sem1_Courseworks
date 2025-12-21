@@ -1,0 +1,22 @@
+* CMOS Full Adder - LTspice
+
+.include cmos_180nm.lib
+.include cmos_gates.lib
+
+VDD vdd 0 1.8
+
+VA A 0 PULSE(0 1.8 0 1n 1n 10n 20n)
+VB B 0 PULSE(0 1.8 0 1n 1n 20n 40n)
+VC Cin 0 PULSE(0 1.8 0 1n 1n 40n 80n)
+
+* Sum = A ⊕ B ⊕ Cin
+X1 A B x1 vdd 0 XOR2
+X2 x1 Cin SUM vdd 0 XOR2
+
+* Cout = AB + Cin(A ⊕ B)
+X3 A B x2 vdd 0 AND2
+X4 x1 Cin x3 vdd 0 AND2
+X5 x2 x3 COUT vdd 0 OR2
+
+.tran 0 100n 0 0.1n
+.end
