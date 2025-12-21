@@ -1,0 +1,100 @@
+# 3D GaN cylindrical device - Mesh + I-V only
+go atlas simflag="-P 8"
+
+
+###### MESH - enable full 3D cylindrical mesh
+MESH THREE.D CYLINDRICAL
+
+# radial mesh
+R.MESH loc=0.0       spacing=0.02
+R.MESH loc=0.005  spacing=0.01
+R.MESH loc=0.007 spacing=0.01
+R.MESH loc=0.008 spacing=0.01
+
+# angular mesh (0..360)
+A.MESH loc=0         spacing=30
+A.MESH loc=360       spacing=30
+
+# z-mesh - same as your original (extends channel length)
+Z.MESH loc=0         spacing=0.25
+Z.MESH loc=0.015     spacing=0.02
+Z.MESH loc=0.040     spacing=0.02
+Z.MESH loc=0.060 spacing=0.02
+Z.MESH loc=0.085 spacing=0.02
+Z.MESH loc=0.10 spacing=0.25
+
+###### REGIONS - change semiconductor to GaN
+# region 1: GaN wire/core
+region num=1 material=GaN z.min=0 z.max=0.10 r.min=0 r.max=0.005 a.min=0 a.max=360 name= GaN
+
+# region 2: air / surroundings
+region num=2 material=air z.min=0 z.max=0.10 r.min=0.005 r.max=0.008 a.min=0 a.max=360 name= air
+
+# region 3: high-k gate dielectric (kept as your AlGaN)
+region num=3 material=AlGaN  z.min=0.015 z.max=0.085  r.min=0.005 r.max=0.007 a.min=0 a.max=360 name=AlGaN
+
+# region 4: SI3N4-1
+region num=4 material=Si3N4  z.min=0.015 z.max=0.040  r.min=0.007 r.max=0.009 a.min=0 a.max=360 name= Si3n4_1
+
+# region 5: SI3N4-2
+region num=5 material=Si3N4  z.min=0.060 z.max=0.085  r.min=0.007 r.max=0.009 a.min=0 a.max=360 name= Si3n4_2
+
+###### ELECTRODES (same geometry as your original)
+electrode name=drain z.min=0     z.max=0.015    r.min=0.005 r.max=0.011 a.min=0 a.max=360
+electrode name=source z.min=0.085 z.max=0.10 r.min=0.005 r.max=0.011 a.min=0 a.max=360
+electrode name=gate  z.min=0.040 z.max=0.060 r.min=0.007 r.max=0.011 a.min=0 a.max=360
+
+###### DOPING - adjust as desired (GaN usually n-type donors for power/HEMT-like)
+# here I use uniform n-type donor in region 1
+doping uniform n.type conc=1e18 reg=1
+
+###### CONTACTS - associate workfunction / metals
+contact name=gate workfunction=4.85
+contact name=drain
+contact name=source
+
+###### SAVE STRUCTURE
+save outf=gaa_nwire_GaN_3D.str
+
+###### MODELS & OUTPUT
+# Use standard models; include SRH, AUGER, Fermi (BGN is ok but nitride-specific flags exist)
+MODEL FLDMOB CVT SRH AUGER FERMI BGN temperature=300
+output e.field j.electron j.hole j.conduc j.total e.mobility h.mobility
+
+###### SOLUTION METHOD
+METHOD NEWTON
+
+###### INITIALIZE
+solve init
+
+###### I-V SWEEPS
+# We'll sweep vdrain from 0 -> 1 V in 0.05 V steps for several gate biases (0, 0.5, 1.0 V).
+# For each gate bias, create a separate log so TonyPlot can plot I-V curves per Vg.
+
+# Gate = 0.0 V
+solve name=gate vgate=0
+log outf=gaa_IV_Vg_0.0.log master
+solve name=Drain vDrain=0 vstep=0.05 vfinal=1
+log off
+
+# Gate = 0.5 V
+solve init
+solve name=gate vgate=0.5
+log outf=gaa_IV_Vg_0.5.log master
+solve name=Drain vDrain=0 vstep=0.05 vfinal=1
+log off
+
+# Gate = 1.0 V
+solve init
+solve name=gate vgate=1.0
+log outf=gaa_IV_Vg_1.0.log master
+solve name=Drain vDrain=0 vstep=0.05 vfinal=1
+log off
+
+# Save final structure after sweeps (optional)
+save outf = gaa_nwire_GaN_3D_final.str master
+tonyplot gaa_nwire_GaN_3D_final.str
+# Produce combined TonyPlot command (you can run this from shell or DeckBuild command line)
+tonyplot gaa_IV_Vg_0.0.log gaa_IV_Vg_0.5.log gaa_IV_Vg_1.0.log -set gaa_IV.set
+
+quit

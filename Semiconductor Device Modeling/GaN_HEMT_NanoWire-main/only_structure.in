@@ -1,0 +1,37 @@
+go atlas simflag="-P 8"
+
+MESH THREE.D CYLINDRICAL
+
+R.MESH loc=0.0     spacing=0.02
+R.MESH loc=0.005   spacing=0.01
+R.MESH loc=0.007   spacing=0.01
+R.MESH loc=0.008   spacing=0.01
+
+A.MESH loc=0       spacing=30
+
+Z.MESH loc=0       spacing=0.25
+Z.MESH loc=0.015   spacing=0.02
+Z.MESH loc=0.040   spacing=0.02
+Z.MESH loc=0.060   spacing=0.02
+Z.MESH loc=0.085   spacing=0.02
+Z.MESH loc=0.10    spacing=0.25
+
+region num=1 material=GaN   z.min=0    z.max=0.10 r.min=0    r.max=0.005 a.min=0 a.max=360
+region num=2 material=air   z.min=0    z.max=0.10 r.min=0.005 r.max=0.008 a.min=0 a.max=360
+region num=3 material=AlGaN z.min=0.015 z.max=0.085 r.min=0.005 r.max=0.007 a.min=0 a.max=360
+region num=4 material=Si3N4 z.min=0.015 z.max=0.085 r.min=0.007 r.max=0.009 a.min=0 a.max=360
+
+electrode name=drain  z.min=0.0   z.max=0.015 r.min=0.005 r.max=0.009 a.min=0 a.max=360
+electrode name=source z.min=0.085 z.max=0.10  r.min=0.005 r.max=0.009 a.min=0 a.max=360
+electrode name=gate   z.min=0.040 z.max=0.060 r.min=0.007 r.max=0.009 a.min=0 a.max=360
+
+doping uniform n.type conc=1e18 reg=1
+
+contact name=gate workfunction=4.85
+contact name=drain
+contact name=source
+
+save outf=gaa_nwire_GaN_3D.str
+tonyplot gaa_nwire_GaN_3D.str
+
+quit

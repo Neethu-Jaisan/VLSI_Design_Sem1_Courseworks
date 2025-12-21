@@ -1,0 +1,103 @@
+go atlas 
+title "3D AlGaN/GaN HEMT"
+
+# Sweep increment
+set vstart = 0
+set vstop  = 15
+set vinc   = 0.5
+
+# -----------------------
+# Mesh (3D)
+# -----------------------
+mesh three
+
+# x mesh (device length direction)
+x.mesh loc=0.0   spac=0.25
+x.mesh loc=0.5   spac=0.25
+x.mesh loc=1.0   spac=0.25
+x.mesh loc=3.5   spac=0.15
+x.mesh loc=5.5   spac=0.15
+x.mesh loc=8.0   spac=0.15
+x.mesh loc=8.5   spac=0.25
+x.mesh loc=9.0   spac=0.25
+
+# y mesh (vertical direction)
+y.mesh loc=0.0     spac=0.25
+y.mesh loc=0.5     spac=0.001
+y.mesh loc=0.525   spac=0.001
+y.mesh loc=0.6     spac=0.05
+y.mesh loc=0.7     spac=0.1
+y.mesh loc=1.0     spac=0.2
+y.mesh loc=2.0     spac=1.0
+
+# z mesh (new 3D dimension = width of device)
+z.mesh loc=0.0   spac=0.5
+z.mesh loc=1.0   spac=0.5   
+
+# -----------------------
+# Regions
+# -----------------------
+region num=1 material=AlGaN x.comp=0.3 \
+    x.min=0   x.max=9   y.min=0.5   y.max=0.525 z.min=0 z.max=1 name= AlGaN
+
+region num=2 material=nitride insulator \
+    x.min=0   x.max=9   y.min=0.0   y.max=0.5   z.min=0 z.max=1	name= Si3N2
+
+region num=3 material=GaN substrate \
+    x.min=0   x.max=9   y.min=0.525 y.max=2.0   z.min=0 z.max=1 name=GaN
+
+# -----------------------
+# Electrodes (3D boundaries)
+# -----------------------
+electrode num=1 name=source \
+    x.min=0.0   x.max=0.5   y.min=0.5 y.max=0.6   z.min=0 z.max=1
+
+electrode num=2 name=drain \
+    x.min=8.5   x.max=9.0   y.min=0.5 y.max=0.6   z.min=0 z.max=1
+
+electrode num=3 name=gate \
+    x.min=3.5   x.max=5.5   y.min=0.0 y.max=0.5   z.min=0 z.max=1
+
+electrode num=4 substrate
+
+# -----------------------
+# Contacts
+# -----------------------
+contact name=gate work=5
+contact name=source work=3.93
+contact name=drain work=3.93
+
+# -----------------------
+# Models
+# -----------------------
+models print srh 
+mobility albrct.n 
+model polarization calc.strain polar.scale=0.8 
+
+output con.band val.band charge polar.charge band.par
+
+method newton trap maxtrap=20
+
+# -----------------------
+# Solve bias sweeps
+# -----------------------
+solve init
+save outf =ganfet3d_0.str
+
+solve vdrain=1.0
+solve name=gate vfinal=-10 vstep=-0.5
+log outf = ganfet3d_0.log
+solve name=gate vfinal=1.0 vstep=0.5
+log off
+
+solve init
+solve vgate=-3
+log outf =ganfet3d_1.log
+solve name=drain vdrain=$vstart vfinal=$vstop vstep=$vinc
+log off
+
+tonyplot ganfet3d_0.log
+tonyplot ganfet3d_1.log
+tonyplot3d ganfet3d_0.str
+
+quit

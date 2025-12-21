@@ -1,0 +1,128 @@
+# 3D GaN cylindrical device - Mesh + I-V only (updated dims, doping, models)
+go atlas simflag="-P 8"
+
+###### MESH - enable full 3D cylindrical mesh (finer near channel)
+MESH THREE.D CYLINDRICAL
+
+# radial mesh (finer near r ~ 0.005)
+R.MESH loc=0.0       spacing=0.01
+R.MESH loc=0.004     spacing=0.002
+R.MESH loc=0.005     spacing=0.001
+R.MESH loc=0.006     spacing=0.002
+R.MESH loc=0.008     spacing=0.01
+
+# angular mesh (0..360)
+A.MESH loc=0         spacing=30
+A.MESH loc=360       spacing=30
+
+# z-mesh - refined near source/drain/gate regions
+Z.MESH loc=0         spacing=0.25
+Z.MESH loc=0.005     spacing=0.005
+Z.MESH loc=0.015     spacing=0.002
+Z.MESH loc=0.040     spacing=0.002
+Z.MESH loc=0.060     spacing=0.002
+Z.MESH loc=0.085     spacing=0.002
+Z.MESH loc=0.10      spacing=0.005
+Z.MESH loc=0.12      spacing=0.25
+
+###### REGIONS - semiconductor & dielectrics
+# central channel GaN (reduced doping)
+region num=1 material=GaN  z.min=0.015 z.max=0.085 r.min=0 r.max=0.006 a.min=0 a.max=360 name=GaN_channel
+
+# source/drain GaN heavily-doped segments (inside same radial extent)
+region num=6 material=GaN  z.min=0.000 z.max=0.015 r.min=0 r.max=0.006 a.min=0 a.max=360 name=GaN_drain_seg
+region num=7 material=GaN  z.min=0.085 z.max=0.12  r.min=0 r.max=0.006 a.min=0 a.max=360 name=GaN_source_seg
+
+# surrounding air
+region num=2 material=air  z.min=0 z.max=0.12 r.min=0.006 r.max=0.009 a.min=0 a.max=360 name=air
+
+# high-k gate dielectric (AlGaN)
+region num=3 material=AlGaN z.min=0.015 z.max=0.085 r.min=0.006 r.max=0.007 a.min=0 a.max=360 name=AlGaN
+
+# two Si3N4 caps (as before)
+region num=4 material=Si3N4 z.min=0.015 z.max=0.040 r.min=0.007 r.max=0.009 a.min=0 a.max=360 name=Si3n4_1
+region num=5 material=Si3N4 z.min=0.060 z.max=0.085 r.min=0.007 r.max=0.009 a.min=0 a.max=360 name=Si3n4_2
+
+###### ELECTRODES (overlap drain/source segments)
+electrode name=drain z.min=0     z.max=0.015    r.min=0.006 r.max=0.011 a.min=0 a.max=360
+electrode name=source z.min=0.085 z.max=0.12     r.min=0.006 r.max=0.011 a.min=0 a.max=360
+electrode name=gate  z.min=0.040 z.max=0.060 r.min=0.007 r.max=0.011 a.min=0 a.max=360
+
+###### DOPING - channel low, S/D heavy (n-type)
+# Channel - light n-type (background)
+doping uniform n.type conc=1e16 reg=1
+
+# S/D segments - heavy n+ doping for low contact resistance
+doping uniform n.type conc=1e19 reg=6
+doping uniform n.type conc=1e19 reg=7
+
+# Optional: small acceptor background in surrounding (optional)
+doping uniform p.type conc=1e12 reg=2
+
+###### CONTACTS / METALS
+contact name=gate workfunction=4.85
+contact name=drain
+contact name=source
+
+###### SAVE STRUCTURE (initial)
+save outf=gaa_nwire_GaN_3D_updated.str
+
+###### MODELS & OUTPUT - expanded set for GaN work
+# FLDMOB - field dependent mobility
+# CONMOB - concentration-dependent mobility
+# CVT - carrier-carrier scattering / high-field
+# SRH  - Shockley-Read-Hall recombination
+# AUGER - Auger recombination (important at high injection)
+# FERMI - Fermi-Dirac statistics for degenerate doping
+# BGN - band-gap narrowing (doped regions)
+# IMPACT - impact ionization (avalanche at high Vd)
+MODEL FLDMOB CONMOB CVT SRH AUGER FERMI BGN IMPACT temperature=300
+
+# Outputs
+output e.field j.electron j.hole j.conduc j.total e.mobility h.mobility 
+
+###### SOLUTION METHOD
+METHOD NEWTON
+
+###### INITIALIZE
+solve init
+
+###### BIAS PRE-BIAS (optional bias to settle contacts)
+# bias gate at 0 and small Vd to precondition
+solve name=gate vgate=0
+solve name=Drain vDrain=0.01
+
+###### I-V SWEEPS
+# Sweep Vd from 0 -> 5 V in 0.05 V steps for three gate biases:
+# Gate = 0.0 V (off), 2.5 V (mid), 5.0 V (on)
+# Note: reduce vstep if Newton fails.
+
+# Gate = 0.0 V
+solve init
+solve name=gate vgate=0.0
+log outf=gaa_IV_Vg_0.0.log master
+solve name=Drain vDrain=0 vstep=0.05 vfinal=5.0
+log off
+
+# Gate = 2.5 V
+solve init
+solve name=gate vgate=2.5
+log outf=gaa_IV_Vg_2.5.log master
+solve name=Drain vDrain=0 vstep=0.05 vfinal=5.0
+log off
+
+# Gate = 5.0 V
+solve init
+solve name=gate vgate=5.0
+log outf=gaa_IV_Vg_5.0.log master
+solve name=Drain vDrain=0 vstep=0.05 vfinal=5.0
+log off
+
+# Save final structure after sweeps
+save outf=gaa_nwire_GaN_3D_updated_final.str master
+
+# Plot commands
+tonyplot gaa_nwire_GaN_3D_updated_final.str
+tonyplot gaa_IV_Vg_0.0.log gaa_IV_Vg_2.5.log gaa_IV_Vg_5.0.log -set gaa_IV_updated.set
+
+quit

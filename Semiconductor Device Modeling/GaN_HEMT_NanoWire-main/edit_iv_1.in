@@ -1,0 +1,69 @@
+go atlas simflag="-P 8"
+
+MESH THREE.D CYLINDRICAL
+
+R.MESH loc=0.0     spacing=0.02
+R.MESH loc=0.005   spacing=0.01
+R.MESH loc=0.007   spacing=0.01
+R.MESH loc=0.008   spacing=0.01
+
+A.MESH loc=0       spacing=30
+
+Z.MESH loc=0       spacing=0.25
+Z.MESH loc=0.015   spacing=0.02
+Z.MESH loc=0.040   spacing=0.02
+Z.MESH loc=0.060   spacing=0.02
+Z.MESH loc=0.085   spacing=0.02
+Z.MESH loc=0.10    spacing=0.25
+
+region num=1 material=GaN   z.min=0    z.max=0.10 r.min=0    r.max=0.005 a.min=0 a.max=360
+region num=2 material=air   z.min=0    z.max=0.10 r.min=0.005 r.max=0.008 a.min=0 a.max=360
+region num=3 material=AlGaN z.min=0.015 z.max=0.085 r.min=0.005 r.max=0.007 a.min=0 a.max=360
+region num=4 material=Si3N4 z.min=0.015 z.max=0.085 r.min=0.007 r.max=0.009 a.min=0 a.max=360
+
+electrode name=drain  z.min=0.0   z.max=0.015 r.min=0.005 r.max=0.009 a.min=0 a.max=360
+electrode name=source z.min=0.085 z.max=0.10  r.min=0.005 r.max=0.009 a.min=0 a.max=360
+electrode name=gate   z.min=0.040 z.max=0.060 r.min=0.007 r.max=0.009 a.min=0 a.max=360
+
+doping uniform n.type conc=1e18 reg=1
+
+contact name=gate workfunction=4.85
+contact name=drain
+contact name=source
+
+save outf=gaa_nwire_GaN_3D.str
+tonyplot gaa_nwire_GaN_3D.str
+
+####### MODEL ###############################################################
+MODEL FLDMOB CVT SRH AUGER FERMI BGN  bipolar temperature=300
+output e.field j.electron j.hole j.conduc j.total ex.field ey.field e.mobility h.mobility qsse.temp h.temp qfn qfp con.band val.band j.disp
+
+####### METHOD ###############################################################
+
+METHOD NEWTON
+
+solve init
+solve vsource=0 
+solve name=drain vdrain=0 vstep=0.05 vfinal=0.5
+log outf =gaa_nwire_GaN_iv.log master
+solve name=gate vgate=0 vstep=0.05 vfinal=2
+
+output e.field j.electron j.hole j.conduc j.total ex.field ey.field e.mobility h.mobility qsse.temp h.temp qfn qfp con.band val.band j.disp
+
+save outf =gaa_nwire_GaN_iv.str master
+tonyplot gaa_nwire_GaN_iv.log
+tonyplot gaa_nwire_GaN_iv.str
+log off
+
+# AC Analysis
+
+solve init
+solve name=drain vdrain=0 vstep=0.05 vfinal=0.5
+log outf =gaa_nwire_ac.log master
+solve name=gate vgate=0 vstep=0.05 vfinal=1 AC FREQ=1.0e6
+save outf =gaa_nwire_ac.str master
+tonyplot gaa_nwire_ac.log
+tonyplot gaa_nwire_ac.str
+log off
+
+quit
