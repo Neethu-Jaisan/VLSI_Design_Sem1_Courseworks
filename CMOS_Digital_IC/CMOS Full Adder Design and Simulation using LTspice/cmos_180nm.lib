@@ -1,0 +1,4 @@
+* Simple 180nm CMOS Models for LTspice
+
+.model NMOS NMOS LEVEL=1 VTO=0.45 KP=120u LAMBDA=0.05
+.model PMOS PMOS LEVEL=1 VTO=-0.45 KP=60u  LAMBDA=0.05
