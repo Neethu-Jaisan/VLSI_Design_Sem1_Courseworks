@@ -1,0 +1,33 @@
+* CMOS Logic Gates
+
+* Inverter
+.subckt INV in out vdd gnd
+MN out in gnd gnd NMOS L=180n W=1u
+MP out in vdd vdd PMOS L=180n W=2u
+.ends INV
+
+* 2-input AND
+.subckt AND2 a b out vdd gnd
+X1 a n1 vdd gnd INV
+X2 b n2 vdd gnd INV
+MN1 out n1 gnd gnd NMOS L=180n W=1u
+MN2 out n2 gnd gnd NMOS L=180n W=1u
+MP1 out n1 vdd vdd PMOS L=180n W=2u
+MP2 out n2 vdd vdd PMOS L=180n W=2u
+.ends AND2
+
+* 2-input OR
+.subckt OR2 a b out vdd gnd
+MN1 out a gnd gnd NMOS L=180n W=1u
+MN2 out b gnd gnd NMOS L=180n W=1u
+MP1 out a vdd vdd PMOS L=180n W=2u
+MP2 out b vdd vdd PMOS L=180n W=2u
+.ends OR2
+
+* 2-input XOR
+.subckt XOR2 a b out vdd gnd
+X1 a b n1 vdd gnd AND2
+X2 a b n2 vdd gnd OR2
+MN out n1 gnd gnd NMOS L=180n W=1u
+MP out n2 vdd vdd PMOS L=180n W=2u
+.ends XOR2
